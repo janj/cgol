@@ -80,10 +80,63 @@ end
 
 class ConwayTest
   def self.run_all
-    ['is_valid_cordinate_test', 'neighbors_test'].each do |test|
+    test_methods.each do |test|
       puts test
       print_errors(ConwayTest.send(test))
       puts
+    end
+  end
+
+  def self.test_methods
+    (methods - superclass.methods).select { |method_name| method_name.to_s.end_with?('_test') }
+  end
+
+  def self.stub_neigbor_count(conway, count)
+    conway.define_singleton_method(:count_neighbors) { |*args| count }
+  end
+
+  def self.alive_or_dead_test
+    c = Conway.new(board: [[1, 0], [0, 0]])
+    stub_neigbor_count(c, 2)
+    alive_identity = c.alive_or_dead(0, 0) == 1
+    dead_identity = c.alive_or_dead(0, 1) == 0
+
+    stub_neigbor_count(c, 3)
+    alive_group = c.alive_or_dead(0, 0) == 1
+    dead_group = c.alive_or_dead(1, 0) == 1
+
+    stub_neigbor_count(c, 1)
+    alive_starved = c.alive_or_dead(0, 0) == 0
+    dead_starved = c.alive_or_dead(0, 1) == 0
+
+    stub_neigbor_count(c, 5)
+    alive_crowded = c.alive_or_dead(0, 0) == 0
+    dead_crowded = c.alive_or_dead(0, 1) == 0
+
+    [].tap do |errors|
+      errors << "should return 1 when alive and surrounded by two neighbors" unless alive_identity
+      errors << "should return 0 when dead and surrounded by two neighbors" unless dead_identity
+      errors << "should return 1 when alive and surrounded by three neighbors" unless alive_group
+      errors << "should return 1 when dead and surrounded by three neighbors" unless dead_group
+      errors << "should return 0 when alive and starved" unless alive_starved
+      errors << "should return 0 when dead and starved" unless dead_starved
+      errors << "should return 0 when alive and crowded" unless alive_crowded
+      errors << "should return 0 when dead and crowded" unless dead_crowded
+    end
+  end
+
+  def self.count_neighbors_test
+    c = Conway.new(board: [[1, 0, 0], [0, 1, 1], [1, 1, 0]])
+    top_left_count = c.count_neighbors(0, 0)
+    expected_top_left = 1
+    middle_count = c.count_neighbors(1, 1)
+    expected_middle = 4
+    bottom_right_count = c.count_neighbors(2, 2)
+    expected_bottom_right = 3
+    [].tap do |errors|
+      errors << "top left count expected #{expected_top_left} got #{top_left_count}" unless top_left_count == expected_top_left
+      errors << "middle count expected #{expected_middle} got #{middle_count}" unless middle_count == expected_middle
+      errors << "top left count expected #{expected_bottom_right} got #{bottom_right_count}" unless bottom_right_count == expected_bottom_right
     end
   end
 
@@ -123,5 +176,3 @@ class ConwayTest
     end
   end
 end
-
-
