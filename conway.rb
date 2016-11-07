@@ -1,23 +1,59 @@
 class Conway
-  attr_accessor :board, :size
+  attr_accessor :board, :size, :seen_map, :steps
 
   def initialize(board: nil, size: 10)
     @board = board || random_board(size)
     @size = @board.size
+    @seen_map = {}
   end
 
   def run
-    steps = 0
+    self.seen_map = {}
+    self.steps = 0
+    current_board_seen_after_steps = nil
     repeating = false
-    while !repeating
-      print_board
+    while current_board_seen_after_steps.nil?
       last_board = board
-      self.board = step
-      steps += 1
-      repeating = last_board == board
-      sleep(1)
+      step_with_print
+      self.steps += 1
+      current_board_seen_after_steps = mark_steps_or_return_last_seen
     end
-    "At stable state after #{steps} steps"
+    loop_length = steps - current_board_seen_after_steps - 1
+    puts "steps #{steps} #{current_board_seen_after_steps} #{loop_length}"
+    (loop_length * 3).times do
+      step_with_print
+    end
+    puts "At stable state after #{steps} steps"
+    puts "In loop of length #{loop_length}"
+  end
+
+  def step_with_print
+    print_board
+    self.board = step
+    sleep(0.25)
+  end
+
+  def mark_steps_or_return_last_seen
+    if steps_for_board(board)
+      steps_for_board(board)
+    else
+      store_steps_for_board(board, steps)
+      nil
+    end
+  end
+
+  def steps_for_board(board)
+    seen_map[to_key(board)]
+  end
+
+  def store_steps_for_board(board, steps)
+    seen_map[to_key(board)] = steps
+  end
+
+  def to_key(board)
+    board.map do |col|
+      col.join('')
+    end.join('')
   end
 
   def print_board
@@ -51,7 +87,7 @@ class Conway
   def count_neighbors(col_idx, row_idx)
     neighbors(col_idx, row_idx).map do |col_idx, row_idx|
       board[col_idx][row_idx] 
-    end.inject(0) { |sum, n| sum + n }
+    end.reduce(:+)
   end
 
   def neighbors(col_idx, row_idx)
@@ -81,10 +117,20 @@ end
 class ConwayTest
   def self.run_all
     test_methods.each do |test|
-      puts test
-      print_errors(ConwayTest.send(test))
-      puts
+      test_single(test)
     end
+  end
+
+  def self.run(*tests)
+    tests.each do |test|
+      test_single("#{test}_test")
+    end
+  end
+
+  def self.test_single(test)
+    puts test
+    print_errors(ConwayTest.send(test))
+    puts
   end
 
   def self.test_methods
@@ -93,6 +139,22 @@ class ConwayTest
 
   def self.stub_neigbor_count(conway, count)
     conway.define_singleton_method(:count_neighbors) { |*args| count }
+  end
+
+  def self.mark_steps_or_return_last_seen_test
+    c = Conway.new(board: [[0, 1], [1, 1]])
+    c.steps = 42
+    returns_nil_when_new_board = c.mark_steps_or_return_last_seen.nil?
+    is_stored = !c.steps_for_board(c.board).nil?
+    is_stored_with_correct_value = c.steps_for_board(c.board) == 42
+    returns_steps_when_seen = c.mark_steps_or_return_last_seen == 42
+
+    [].tap do |errors|
+      errors << "should return nil for unrecognized board" unless returns_nil_when_new_board
+      errors << "should store the board" unless is_stored
+      errors << "should store the number of steps with the board, expected #{42} got #{c.steps_for_board}" unless is_stored_with_correct_value
+      errors << "should return the number of steps to board when stored" unless returns_steps_when_seen
+    end
   end
 
   def self.alive_or_dead_test
