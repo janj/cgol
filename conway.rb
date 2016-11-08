@@ -5,7 +5,7 @@ class String
 end
 
 class Conway
-  attr_accessor :board, :size, :seen_map, :steps
+  attr_accessor :board, :size, :seen_map, :step_count
 
   def initialize(board: nil, size: 25)
     @board = board || random_board(size)
@@ -15,20 +15,20 @@ class Conway
 
   def run
     self.seen_map = {}
-    self.steps = 0
+    self.step_count = 0
     current_board_seen_after_steps = nil
     repeating = false
     while current_board_seen_after_steps.nil?
       last_board = board
       step_with_print
-      self.steps += 1
+      self.step_count += 1
       current_board_seen_after_steps = mark_steps_or_return_last_seen
     end
-    loop_length = steps - current_board_seen_after_steps - 1
+    loop_length = step_count - current_board_seen_after_steps - 1
     (loop_length * 3).times do
       step_with_print
     end
-    puts "At stable state after #{steps} steps"
+    puts "At stable state after #{step_count} steps"
     puts "In loop of length #{loop_length}"
   end
 
@@ -42,7 +42,7 @@ class Conway
     if steps_for_board(board)
       steps_for_board(board)
     else
-      store_steps_for_board(board, steps)
+      store_steps_for_board(board, step_count)
       nil
     end
   end
@@ -51,8 +51,8 @@ class Conway
     seen_map[to_key(board)]
   end
 
-  def store_steps_for_board(board, steps)
-    seen_map[to_key(board)] = steps
+  def store_steps_for_board(board, step_count)
+    seen_map[to_key(board)] = step_count
   end
 
   def to_key(board)
@@ -82,7 +82,7 @@ class Conway
   end
 
   def alive_or_dead(col_idx, row_idx)
-    case count_neighbors(col_idx, row_idx)
+    case neighbor_count(col_idx, row_idx)
     when 2
       board[col_idx][row_idx]
     when 3
@@ -92,7 +92,7 @@ class Conway
     end
   end
 
-  def count_neighbors(col_idx, row_idx)
+  def neighbor_count(col_idx, row_idx)
     neighbors(col_idx, row_idx).map do |col_idx, row_idx|
       board[col_idx][row_idx] 
     end.reduce(:+)
@@ -114,11 +114,7 @@ class Conway
       [right, top],
       [right, row_idx],
       [right, bottom],      
-    ].select { |col_idx, row_idx| is_valid_cordinate(col_idx, row_idx) }
-  end
-
-  def is_valid_cordinate(col_idx, row_idx)
-    col_idx>=0 && col_idx<size && row_idx>=0 && row_idx<size
+    ]
   end
 
   def random_board(size)
@@ -150,12 +146,12 @@ class ConwayTest
   end
 
   def self.stub_neigbor_count(conway, count)
-    conway.define_singleton_method(:count_neighbors) { |*args| count }
+    conway.define_singleton_method(:neighbor_count) { |*args| count }
   end
 
   def self.mark_steps_or_return_last_seen_test
     c = Conway.new(board: [[0, 1], [1, 1]])
-    c.steps = 42
+    c.step_count = 42
     returns_nil_when_new_board = c.mark_steps_or_return_last_seen.nil?
     is_stored = !c.steps_for_board(c.board).nil?
     is_stored_with_correct_value = c.steps_for_board(c.board) == 42
@@ -199,13 +195,13 @@ class ConwayTest
     end
   end
 
-  def self.count_neighbors_test
+  def self.neighbor_count_test
     c = Conway.new(board: [[1, 0, 0], [0, 1, 1], [1, 1, 0]])
-    top_left_count = c.count_neighbors(0, 0)
+    top_left_count = c.neighbor_count(0, 0)
     expected_top_left = 4
-    middle_count = c.count_neighbors(1, 1)
+    middle_count = c.neighbor_count(1, 1)
     expected_middle = 4
-    bottom_right_count = c.count_neighbors(2, 2)
+    bottom_right_count = c.neighbor_count(2, 2)
     expected_bottom_right = 5
     [].tap do |errors|
       errors << "top left count expected #{expected_top_left} got #{top_left_count}" unless top_left_count == expected_top_left
@@ -226,17 +222,6 @@ class ConwayTest
       errors << "top left expected #{expected_top_left} got #{top_left_neighbors}" unless top_left_neighbors == expected_top_left
       errors << "bottom right expected #{expected_bottom_right} got #{bottom_right_neighbors}" unless bottom_right_neighbors == expected_bottom_right
       errors << "middle expected #{expected_middle} got #{middle_neighbors}" unless middle_neighbors == expected_middle
-    end
-  end
-
-  def self.is_valid_cordinate_test
-    c = Conway.new(size: 5)
-    [].tap do |errors|
-      errors << 'valid cordinate' unless c.is_valid_cordinate(0, 4)
-      errors << 'col < 0' if c.is_valid_cordinate(-1, 2)
-      errors << 'col > size' if c.is_valid_cordinate(5, 2)
-      errors << 'row < 0' if c.is_valid_cordinate(1, -1)
-      errors << 'row > size' if c.is_valid_cordinate(1, 5)
     end
   end
 
