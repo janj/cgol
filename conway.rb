@@ -1,7 +1,7 @@
 class Conway
   attr_accessor :board, :size, :seen_map, :steps
 
-  def initialize(board: nil, size: 10)
+  def initialize(board: nil, size: 25)
     @board = board || random_board(size)
     @size = @board.size
     @seen_map = {}
@@ -19,7 +19,6 @@ class Conway
       current_board_seen_after_steps = mark_steps_or_return_last_seen
     end
     loop_length = steps - current_board_seen_after_steps - 1
-    puts "steps #{steps} #{current_board_seen_after_steps} #{loop_length}"
     (loop_length * 3).times do
       step_with_print
     end
@@ -57,12 +56,12 @@ class Conway
   end
 
   def print_board
-    puts '---'*size
+    puts "+#{'-'*size}+"
     board.each do |col|
       col.each { |c| print c == 1 ? 'X' : ' '}
       puts
     end
-    puts '---'*size
+    puts "+#{'-'*size}+"
   end
 
   def step
@@ -91,17 +90,21 @@ class Conway
   end
 
   def neighbors(col_idx, row_idx)
+    left = (col_idx - 1) % size
+    right = (col_idx + 1) % size
+    top = (row_idx - 1) % size
+    bottom = (row_idx + 1) % size
     [
-      [col_idx-1, row_idx-1],
-      [col_idx-1, row_idx],
-      [col_idx-1, row_idx+1],
+      [left, top],
+      [left, row_idx],
+      [left, bottom],
 
-      [col_idx, row_idx-1],
-      [col_idx, row_idx+1],
+      [col_idx, top],
+      [col_idx, bottom],
 
-      [col_idx+1, row_idx-1],
-      [col_idx+1, row_idx],
-      [col_idx+1, row_idx+1],      
+      [right, top],
+      [right, row_idx],
+      [right, bottom],      
     ].select { |col_idx, row_idx| is_valid_cordinate(col_idx, row_idx) }
   end
 
@@ -190,24 +193,24 @@ class ConwayTest
   def self.count_neighbors_test
     c = Conway.new(board: [[1, 0, 0], [0, 1, 1], [1, 1, 0]])
     top_left_count = c.count_neighbors(0, 0)
-    expected_top_left = 1
+    expected_top_left = 4
     middle_count = c.count_neighbors(1, 1)
     expected_middle = 4
     bottom_right_count = c.count_neighbors(2, 2)
-    expected_bottom_right = 3
+    expected_bottom_right = 5
     [].tap do |errors|
       errors << "top left count expected #{expected_top_left} got #{top_left_count}" unless top_left_count == expected_top_left
       errors << "middle count expected #{expected_middle} got #{middle_count}" unless middle_count == expected_middle
-      errors << "top left count expected #{expected_bottom_right} got #{bottom_right_count}" unless bottom_right_count == expected_bottom_right
+      errors << "bottom right count expected #{expected_bottom_right} got #{bottom_right_count}" unless bottom_right_count == expected_bottom_right
     end
   end
 
   def self.neighbors_test
     c = Conway.new(size: 5)
     top_left_neighbors = c.neighbors(0, 0).sort
-    expected_top_left = [[0, 1], [1, 0], [1, 1]]
+    expected_top_left = [[0, 1], [0, 4], [1, 0], [1, 1], [1, 4], [4, 0], [4, 1], [4, 4]]
     bottom_right_neighbors = c.neighbors(4, 4).sort
-    expected_bottom_right = [[3, 3], [3, 4], [4, 3]]
+    expected_bottom_right = [[0, 0], [0, 3], [0, 4], [3, 0], [3, 3], [3, 4], [4, 0], [4, 3]]
     middle_neighbors = c.neighbors(2, 2).sort
     expected_middle = [[1, 1], [1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2], [3, 3]]
     [].tap do |errors|
