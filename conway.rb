@@ -1,3 +1,9 @@
+class String
+  def bg_magenta;     "\e[45m#{self}\e[0m" end
+  def bg_gray;        "\e[47m#{self}\e[0m" end
+  def bg_cyan;        "\e[46m#{self}\e[0m" end
+end
+
 class Conway
   attr_accessor :board, :size, :seen_map, :steps
 
@@ -56,12 +62,15 @@ class Conway
   end
 
   def print_board
-    puts "+#{'-'*size}+"
+    border_cell = ' '.bg_cyan
+    puts border_cell*(size+2)
     board.each do |col|
-      col.each { |c| print c == 1 ? 'X' : ' '}
+      print border_cell
+      col.each { |c| print c == 1 ? ' '.bg_magenta : ' '.bg_gray}
+      print border_cell
       puts
     end
-    puts "+#{'-'*size}+"
+    puts border_cell*(size+2)
   end
 
   def step
