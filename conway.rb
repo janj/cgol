@@ -7,56 +7,67 @@ end
 
 class Conway
   attr_accessor :size, :seen_map, :step_count
-  attr_reader :conway_board
+  attr_reader :conway_board, :progresser
 
   def initialize(board: nil, size: 25)
     @conway_board = ConwayBoard.new(board: board, size: size)
+    @progresser = ConwayProgresser.new(conway_board: @conway_board)
     @seen_map = {}
   end
 
   def run
-    self.seen_map = {}
-    self.step_count = 0
-    current_board_seen_after_steps = nil
-    repeating = false
-    while current_board_seen_after_steps.nil?
-      last_board = conway_board.board
-      step_with_print
-      self.step_count += 1
-      current_board_seen_after_steps = mark_steps_or_return_last_seen
+    while progresser.loop_length.nil?
+      progresser.step
+      print_with_sleep(progresser.step_count)
     end
-    loop_length = step_count - current_board_seen_after_steps - 1
-    (loop_length * 3).times do
-      step_with_print
-    end
-    puts "At stable state after #{step_count} steps"
-    puts "In loop of length #{loop_length}"
+    run_loop
+    puts "At stable state after #{progresser.step_count} steps"
+    puts "In loop of length #{progresser.loop_length}"
   end
 
-  def step_with_print
+  def run_loop(times = 3)
+    (progresser.loop_length * 3).times do
+      conway_board.step
+      print_with_sleep
+    end
+  end
+
+  def print_with_sleep(step_count = nil)
     ConwayPrinter.new(conway_board: conway_board, step_count: step_count).print_board
-    conway_board.step
     sleep(0.25)
   end
+end
 
-  def mark_steps_or_return_last_seen
-    if steps_for_current_board
-      steps_for_current_board
-    else
-      store_step_count_for_current_board(step_count)
-      nil
-    end
+class ConwayProgresser
+  attr_reader :conway_board, :seen_map
+
+  def initialize(conway_board:)
+    @conway_board = conway_board
+    @seen_map = { }
   end
 
-  def steps_for_current_board
-    seen_map[to_key(conway_board.board)]
+  def step_count
+    seen_map.size
   end
 
-  def store_step_count_for_current_board(step_count)
-    seen_map[to_key(conway_board.board)] = step_count
+  def step
+    seen_map[current_board_key] = step_count
+    conway_board.step
   end
 
-  def to_key(board)
+  def is_repeating?
+    seen_map.key?(current_board_key)
+  end
+
+  def loop_length
+    step_count - seen_map[current_board_key] if is_repeating?
+  end
+
+  def current_board_key
+    key_for_board(conway_board.board)
+  end
+
+  def key_for_board(board)
     board.map do |col|
       col.join('')
     end.join('')
@@ -72,7 +83,7 @@ class ConwayPrinter
   end
 
   def print_board
-    step_s = step_count > 0 ? step_count.to_s : ''
+    step_s = (step_count && step_count > 0) ? step_count.to_s : ''
     cell_size = 2
     cell = ' ' * cell_size
     border_cell = ' '.bg_cyan
