@@ -1,24 +1,70 @@
-var size = 10;
-var conwayBoard = [];
+Number.prototype.mod = function(n) { return ((this % n)+n)%n; };
 
-for(var i=0; i<size; i++) {
-  conwayBoard[i] = [];
-  for(var j=0; j<size; j++) {
-    conwayBoard[i][j] = Math.round(Math.random());
+var fullStop = false;
+
+function start() {
+  var size = 10;
+  var conwayBoard = [];
+  var boardNode = document.getElementById('board');
+  var boardTable = document.createElement('table');
+  boardNode.innerHTML = "";
+  boardNode.appendChild(boardTable);
+
+  for(var i=0; i<size; i++) {
+    var rowNode = document.createElement('tr');
+    conwayBoard[i] = [];
+    for(var j=0; j<size; j++) {
+      conwayBoard[i][j] = Math.round(Math.random());
+      var cell = document.createElement('td');
+      cell.id = "c"+i+j;
+      cell.appendChild(document.createTextNode(conwayBoard[i][j]));
+      cell.class = conwayBoard[i][j] == 1 ? 'on' : 'off';
+      rowNode.appendChild(cell);
+
+    }
+    boardTable.appendChild(rowNode);
   }
+  run(conwayBoard);
 }
 
-function step() {
-  var clone = cloneBoard();
-  for(var i=0; i<size; i++) {
-    for(var j=0; j<size; j++) {
-      conwayBoard[i][j] = willBeAlive(clone, i, j) ? 1 : 0;
+function stop() {
+  fullStop = true;
+}
+
+function run(board) {
+  step(board);
+  updateDisplay(board);
+  sleep(500).then(() => {
+    if(!fullStop) {
+      run(board);
+    }
+  });
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function step(board) {
+  var clone = cloneBoard(board);
+  for(var i=0; i<board.length; i++) {
+    for(var j=0; j<board[i].length; j++) {
+      board[i][j] = willBeAlive(clone, i, j) ? 1 : 0;
     }
   }
 }
 
-function cloneBoard() {
-  return JSON.parse(JSON.stringify(conwayBoard));
+function updateDisplay(board) {
+  for(var i=0; i<board.length; i++) {
+    for(var j=0; j<board[i].length; j++) {
+      var element = document.getElementById("c"+i+j);
+      element.innerHTML = board[i][j];
+    }
+  }
+}
+
+function cloneBoard(board) {
+  return JSON.parse(JSON.stringify(board));
 }
 
 function willBeAlive(board, x, y) {
@@ -32,8 +78,10 @@ function countNeighbors(board, x, y) {
   var neighborCount = 0;
   for(i = x-1; i < x+2; i++) {
     for(j = y-1; j < y+2; j++) {
-      if((i!=x || j!=y) && isValidCord(i) && isValidCord(j)) {
-        neighborCount += board[i][j];
+      if((i!=x || j!=y)) {
+        var curX = i.mod(board.length);
+        var curY = j.mod(board[curX].length)
+        neighborCount += board[curX][curY];
       }
     }
   }
