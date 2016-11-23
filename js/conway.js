@@ -1,57 +1,40 @@
 Number.prototype.mod = function(n) { return ((this % n)+n)%n; };
 
-var fullStop = false;
+var gof = null;
 
 function start() {
-  var size = 10;
-  var conwayBoard = [];
+  gof = gameOfLife();
+  buildBoardTable(gof);
+  run();
+}
+
+function buildBoardTable(gof) {
   var boardNode = document.getElementById('board');
   var boardTable = document.createElement('table');
   boardNode.innerHTML = "";
   boardNode.appendChild(boardTable);
 
-  for(var i=0; i<size; i++) {
+  for(var i=0; i<gof.getBoard().length; i++) {
     var rowNode = document.createElement('tr');
-    conwayBoard[i] = [];
-    for(var j=0; j<size; j++) {
-      conwayBoard[i][j] = Math.round(Math.random());
+    for(var j=0; j<gof.getBoard()[i].length; j++) {
       var cell = document.createElement('td');
       cell.id = "c"+i+j;
-      cell.appendChild(document.createTextNode(conwayBoard[i][j]));
-      cell.class = conwayBoard[i][j] == 1 ? 'on' : 'off';
+      var isAlive = gof.isCellAlive(i, j);
+      cell.appendChild(document.createTextNode(isAlive ? '1' : '0'));
+      cell.class = isAlive ? 'on' : 'off';
       rowNode.appendChild(cell);
-
     }
     boardTable.appendChild(rowNode);
   }
-  run(conwayBoard);
 }
 
 function stop() {
-  fullStop = true;
+  gof.stop();
 }
 
-function run(board) {
-  step(board);
-  updateDisplay(board);
-  sleep(500).then(() => {
-    if(!fullStop) {
-      run(board);
-    }
-  });
-}
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-function step(board) {
-  var clone = cloneBoard(board);
-  for(var i=0; i<board.length; i++) {
-    for(var j=0; j<board[i].length; j++) {
-      board[i][j] = willBeAlive(clone, i, j) ? 1 : 0;
-    }
-  }
+function run() {
+  gof.boardInteractor = updateDisplay;
+  gof.run();
 }
 
 function updateDisplay(board) {
@@ -63,37 +46,78 @@ function updateDisplay(board) {
   }
 }
 
-function cloneBoard(board) {
-  return JSON.parse(JSON.stringify(board));
-}
+function gameOfLife() {
+  var gof = {};
+  var isStopped = false;
+  var gofBoard = [];
 
-function willBeAlive(board, x, y) {
-  var neighborCount = countNeighbors(board, x, y);
-  var stayinAlive = board[x][y] == 1 && neighborCount == 2;
-  var isAlive = neighborCount == 3;
-  return stayinAlive || isAlive;
-}
-
-function countNeighbors(board, x, y) {
-  var neighborCount = 0;
-  for(i = x-1; i < x+2; i++) {
-    for(j = y-1; j < y+2; j++) {
-      if((i!=x || j!=y)) {
-        var curX = i.mod(board.length);
-        var curY = j.mod(board[curX].length)
-        neighborCount += board[curX][curY];
+  function initBoard(size) {
+    for(var i=0; i<size; i++) {
+      gofBoard[i] = [];
+      for(var j=0; j<size; j++) {
+        gofBoard[i][j] = Math.round(Math.random());
       }
     }
   }
-  return neighborCount;
-}
 
-function isValidCord(cord) {
-  return cord >= 0 && cord < size;
-}
-
-function consolePrint(board) {
-  for(i=0; i<size; i++) {
-    console.log(board[i].join(' '));
+  function willBeAlive(board, x, y) {
+    var neighborCount = countNeighbors(board, x, y);
+    var stayinAlive = board[x][y] == 1 && neighborCount == 2;
+    var isAlive = neighborCount == 3;
+    return stayinAlive || isAlive;
   }
+
+  function countNeighbors(board, x, y) {
+    var neighborCount = 0;
+    for(i = x-1; i < x+2; i++) {
+      for(j = y-1; j < y+2; j++) {
+        if((i!=x || j!=y)) {
+          var curX = i.mod(board.length);
+          var curY = j.mod(board[curX].length)
+          neighborCount += board[curX][curY];
+        }
+      }
+    }
+    return neighborCount;
+  }
+
+  function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  function cloneBoard(board) {
+    return JSON.parse(JSON.stringify(board));
+  }
+
+
+  gof.step = () => {
+    var clone = cloneBoard(gofBoard);
+    for(var i=0; i<gofBoard.length; i++) {
+      for(var j=0; j<gofBoard[i].length; j++) {
+        gofBoard[i][j] = willBeAlive(clone, i, j) ? 1 : 0;
+      }
+    }
+  }
+
+  gof.run = () => {
+    gof.step();
+    if(gof.boardInteractor) {
+      gof.boardInteractor(gofBoard);
+    }
+    sleep(500).then(() => {
+      if(!isStopped) {
+        gof.run();
+      }
+    });
+  }
+
+  gof.setup = (size) => { initBoard(size); }
+  gof.stop = () => { isStopped = true; }
+  gof.start = () => { isStopped = false; }
+  gof.getBoard = () => { return gofBoard; };
+  gof.isCellAlive = (x, y) => { return gofBoard[x][y] == 1; };
+
+  gof.setup(10);
+  return gof;
 }
+
