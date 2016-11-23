@@ -1,4 +1,13 @@
 Number.prototype.mod = function(n) { return ((this % n)+n)%n; };
+var style_rules = [];
+style_rules.push('td { width: 10px; height: 10px; }')
+style_rules.push("td.off { background-color: grey; }");
+style_rules.push("td.on { background-color: magenta; }");
+style_rules.push("table { border-collapse: collapse }");
+var style = document.createElement('style');
+style.type = "text/css";
+style.innerHTML = style_rules.join("\n");
+document.head.appendChild(style);
 
 var gof = null;
 
@@ -8,8 +17,10 @@ function start() {
   run();
 }
 
+function cellId(x, y) { return "c."+x+"."+y; }
+
 function buildBoardTable(gof) {
-  var boardNode = document.getElementById('board');
+  var boardNode = document.getElementById('gofBoard');
   var boardTable = document.createElement('table');
   boardNode.innerHTML = "";
   boardNode.appendChild(boardTable);
@@ -18,14 +29,19 @@ function buildBoardTable(gof) {
     var rowNode = document.createElement('tr');
     for(var j=0; j<gof.getBoard()[i].length; j++) {
       var cell = document.createElement('td');
-      cell.id = "c"+i+j;
+      cell.id = cellId(i, j);
       var isAlive = gof.isCellAlive(i, j);
-      cell.appendChild(document.createTextNode(isAlive ? '1' : '0'));
-      cell.class = isAlive ? 'on' : 'off';
+      cell.className = isAlive ? 'on' : 'off';
       rowNode.appendChild(cell);
     }
     boardTable.appendChild(rowNode);
   }
+}
+
+function speedUp(faster) {
+  var change = 25;
+  if(faster) { gof.delay -= change; }
+  else { gof.delay += change; }
 }
 
 function stop() {
@@ -37,11 +53,11 @@ function run() {
   gof.run();
 }
 
-function updateDisplay(board) {
-  for(var i=0; i<board.length; i++) {
-    for(var j=0; j<board[i].length; j++) {
-      var element = document.getElementById("c"+i+j);
-      element.innerHTML = board[i][j];
+function updateDisplay(gof) {
+  for(var i=0; i<gof.getBoard().length; i++) {
+    for(var j=0; j<gof.getBoard()[i].length; j++) {
+      var element = document.getElementById(cellId(i, j));
+      element.className = gof.isCellAlive(i, j) ? 'on' : 'off';
     }
   }
 }
@@ -102,9 +118,9 @@ function gameOfLife() {
   gof.run = () => {
     gof.step();
     if(gof.boardInteractor) {
-      gof.boardInteractor(gofBoard);
+      gof.boardInteractor(gof);
     }
-    sleep(500).then(() => {
+    sleep(gof.delay).then(() => {
       if(!isStopped) {
         gof.run();
       }
@@ -116,8 +132,9 @@ function gameOfLife() {
   gof.start = () => { isStopped = false; }
   gof.getBoard = () => { return gofBoard; };
   gof.isCellAlive = (x, y) => { return gofBoard[x][y] == 1; };
+  gof.delay = 500;
 
-  gof.setup(10);
+  gof.setup(50);
   return gof;
 }
 
