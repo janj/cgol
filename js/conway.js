@@ -1,71 +1,147 @@
 Number.prototype.mod = function(n) { return ((this % n)+n)%n; };
-var style_rules = [];
-style_rules.push('td { width: 10px; height: 10px; }')
-style_rules.push("td.off { background-color: grey; }");
-style_rules.push("td.on { background-color: magenta; }");
-style_rules.push("table { border-collapse: collapse }");
-var style = document.createElement('style');
-style.type = "text/css";
-style.innerHTML = style_rules.join("\n");
-document.head.appendChild(style);
 
-var gof = null;
+function gofUI(elementId) {
+  var gof = null;
 
-function start() {
-  gof = gameOfLife();
-  buildBoardTable(gof);
-  run();
-}
-
-function cellId(x, y) { return "c."+x+"."+y; }
-
-function buildBoardTable(gof) {
-  var boardNode = document.getElementById('gofBoard');
-  var boardTable = document.createElement('table');
-  boardNode.innerHTML = "";
-  boardNode.appendChild(boardTable);
-
-  for(var i=0; i<gof.getBoard().length; i++) {
-    var rowNode = document.createElement('tr');
-    for(var j=0; j<gof.getBoard()[i].length; j++) {
-      var cell = document.createElement('td');
-      cell.id = cellId(i, j);
-      var isAlive = gof.isCellAlive(i, j);
-      cell.className = isAlive ? 'on' : 'off';
-      rowNode.appendChild(cell);
-    }
-    boardTable.appendChild(rowNode);
+  let init = (elementId) => {
+    gof = gameOfLife();
+    gof.loopTracker = loopTracker();
+    gof.boardInteractor = doForEachStep;
+    styleInit();
+    buildDisplay(elementId);
   }
-}
 
-function speedUp(faster) {
-  var change = 25;
-  if(faster) { gof.delay -= change; }
-  else { gof.delay += change; }
-}
+  let styleInit = () => {
+    var style_rules = [];
+    style_rules.push('td { width: 10px; height: 10px; }')
+    style_rules.push("td.off { background-color: grey; }");
+    style_rules.push("td.on { background-color: magenta; }");
+    style_rules.push("table { border-collapse: collapse }");
+    var style = document.createElement('style');
+    style.type = "text/css";
+    style.innerHTML = style_rules.join("\n");
+    document.head.appendChild(style);
+  }
 
-function stop() {
-  gof.stop();
-}
+  let buildDisplay = (elementId) => {
+    var boardNode = document.getElementById(elementId);
+    boardNode.innerHTML = "";
+    var container = document.createElement('div');
+    container.appendChild(boardTableElement());
+    container.appendChild(boardFooterElement());
+    boardNode.appendChild(container);
+  }
 
-function run() {
-  gof.boardInteractor = updateDisplay;
-  gof.run();
-}
+  let boardTableElement = () => {
+    var boardTable = document.createElement('table');
+    for(var i=0; i<gof.getBoard().length; i++) {
+      var rowNode = document.createElement('tr');
+      for(var j=0; j<gof.getBoard()[i].length; j++) {
+        var cell = document.createElement('td');
+        cell.id = cellId(i, j);
+        var isAlive = gof.isCellAlive(i, j);
+        cell.className = isAlive ? 'on' : 'off';
+        rowNode.appendChild(cell);
+      }
+      boardTable.appendChild(rowNode);
+    }
+    return boardTable;
+  }
 
-function updateDisplay(gof) {
-  for(var i=0; i<gof.getBoard().length; i++) {
-    for(var j=0; j<gof.getBoard()[i].length; j++) {
-      var element = document.getElementById(cellId(i, j));
-      element.className = gof.isCellAlive(i, j) ? 'on' : 'off';
+  let boardFooterElement = () => {
+    var boardFooter = document.createElement('div');
+    var startButton = document.createElement('button');
+    startButton.appendChild(document.createTextNode('Start'));
+    boardFooter.appendChild(startButton);
+    startButton.onclick = gof.start;
+
+    var stopButton = document.createElement('button');
+    stopButton.appendChild(document.createTextNode('Stop'));
+    boardFooter.appendChild(stopButton);
+    stopButton.onclick = stop;
+
+    var fasterButton = document.createElement('button');
+    fasterButton.appendChild(document.createTextNode('Faster'));
+    boardFooter.appendChild(fasterButton);
+    fasterButton.onclick = () => { speedUp(true) };
+
+    var slowerButton = document.createElement('button');
+    slowerButton.appendChild(document.createTextNode('Slower'));
+    boardFooter.appendChild(slowerButton);
+    slowerButton.onclick = () => { speedUp(false) };
+
+    return boardFooter;
+  }
+
+  let speedUp = (faster) => {
+    var change = 25;
+    if(faster) { gof.delay -= change; }
+    else { gof.delay += change; }
+  }
+
+  let stop = () => {
+    gof.stop();
+  }
+
+  let doForEachStep = () => {
+    gof.loopTracker.didStep(gof.getBoard());
+    updateDisplay(gof);
+    if(gof.loopTracker.foundLoop()) {
+      gof.stop();
     }
   }
+
+  let updateDisplay = () => {
+    for(var i=0; i<gof.getBoard().length; i++) {
+      for(var j=0; j<gof.getBoard()[i].length; j++) {
+        var element = document.getElementById(cellId(i, j));
+        element.className = gof.isCellAlive(i, j) ? 'on' : 'off';
+      }
+    }
+  }
+
+  let cellId = (x, y) => { return "c."+x+"."+y; }
+
+  init(elementId);
+}
+
+function loopTracker() {
+  let prog = {};
+  let seenMap = {};
+  prog.seenMap = seenMap;
+  var count = 0;
+  var currentBoardKey;
+
+  function boardKey(board) {
+    return board.map((a) => { return a.join(''); }).join('');
+  }
+
+  prog.stepCount = () => { return count; }
+  prog.foundLoop = () => { return count > 0 && !!seenMap[currentBoardKey]; }
+  prog.didStep = (board) => {
+    let key = boardKey(board);
+    if(!prog.foundLoop()) {
+      if(!!currentBoardKey) {
+        seenMap[currentBoardKey] = count;
+      }
+      currentBoardKey = key;
+      count += 1;
+    }
+  }
+  prog.loopLength = () => {
+    var loopLength = 0;
+    if(prog.foundLoop()) {
+      loopLength = prog.stepCount - seenMap[boardKey(board)];
+    }
+    return loopLength;
+  }
+  return prog;
 }
 
 function gameOfLife() {
-  var gof = {};
+  let gof = {};
   var isStopped = false;
-  var gofBoard = [];
+  let gofBoard = [];
 
   function initBoard(size) {
     for(var i=0; i<size; i++) {
@@ -105,6 +181,17 @@ function gameOfLife() {
     return JSON.parse(JSON.stringify(board));
   }
 
+  function run() {
+    gof.step();
+    if(gof.boardInteractor) {
+      gof.boardInteractor(gof);
+    }
+    sleep(gof.delay).then(() => {
+      if(!isStopped) {
+        run();
+      }
+    });
+  }
 
   gof.step = () => {
     var clone = cloneBoard(gofBoard);
@@ -115,26 +202,14 @@ function gameOfLife() {
     }
   }
 
-  gof.run = () => {
-    gof.step();
-    if(gof.boardInteractor) {
-      gof.boardInteractor(gof);
-    }
-    sleep(gof.delay).then(() => {
-      if(!isStopped) {
-        gof.run();
-      }
-    });
-  }
-
   gof.setup = (size) => { initBoard(size); }
   gof.stop = () => { isStopped = true; }
-  gof.start = () => { isStopped = false; }
+  gof.start = () => { isStopped = false; run(); }
   gof.getBoard = () => { return gofBoard; };
   gof.isCellAlive = (x, y) => { return gofBoard[x][y] == 1; };
   gof.delay = 500;
 
-  gof.setup(50);
+  gof.setup(20);
   return gof;
 }
 
