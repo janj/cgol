@@ -27,6 +27,7 @@ function gofUI(elementId) {
     var boardNode = document.getElementById(elementId);
     boardNode.innerHTML = "";
     var container = document.createElement('div');
+    container.appendChild(boardHeaderElement());
     container.appendChild(boardTableElement());
     container.appendChild(boardFooterElement());
     boardNode.appendChild(container);
@@ -73,6 +74,20 @@ function gofUI(elementId) {
     return boardFooter;
   }
 
+  let boardHeaderElement = () => {
+    let boardHeader = document.createElement('div');
+    let stepContainer = document.createElement('div');
+    let stepCount = document.createElement('span');
+    stepCount.id = 'stepCount';
+    stepContainer.appendChild(document.createTextNode('Step '));
+    stepContainer.appendChild(stepCount);
+    boardHeader.appendChild(stepContainer);
+    let loopDisplay = document.createElement('div');
+    loopDisplay.id = 'loopDisplay';
+    boardHeader.appendChild(loopDisplay);
+    return boardHeader;
+  }
+
   let speedUp = (faster) => {
     var change = 25;
     if(faster) { gof.delay -= change; }
@@ -92,11 +107,23 @@ function gofUI(elementId) {
   }
 
   let updateDisplay = () => {
+    updateHeader();
+    updateBoard();
+  }
+
+  let updateBoard = () => {
     for(var i=0; i<gof.getBoard().length; i++) {
       for(var j=0; j<gof.getBoard()[i].length; j++) {
         var element = document.getElementById(cellId(i, j));
         element.className = gof.isCellAlive(i, j) ? 'on' : 'off';
       }
+    }
+  }
+
+  let updateHeader = () => {
+    document.getElementById('stepCount').innerHTML = gof.loopTracker.stepCount();
+    if(gof.loopTracker.foundLoop()) {
+      document.getElementById('loopDisplay').innerHTML = 'found loop of length ' + gof.loopTracker.loopLength();
     }
   }
 
@@ -108,7 +135,6 @@ function gofUI(elementId) {
 function loopTracker() {
   let prog = {};
   let seenMap = {};
-  prog.seenMap = seenMap;
   var count = 0;
   var currentBoardKey;
 
@@ -131,7 +157,7 @@ function loopTracker() {
   prog.loopLength = () => {
     var loopLength = 0;
     if(prog.foundLoop()) {
-      loopLength = prog.stepCount - seenMap[boardKey(board)];
+      loopLength = count - seenMap[currentBoardKey] - 1;
     }
     return loopLength;
   }
