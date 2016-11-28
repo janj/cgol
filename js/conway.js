@@ -31,6 +31,7 @@ function gofUI(elementId) {
     container.appendChild(boardTableElement());
     container.appendChild(boardFooterElement());
     boardNode.appendChild(container);
+    updateHeader();
   }
 
   let boardTableElement = () => {
@@ -59,7 +60,7 @@ function gofUI(elementId) {
     var stopButton = document.createElement('button');
     stopButton.appendChild(document.createTextNode('Stop'));
     boardFooter.appendChild(stopButton);
-    stopButton.onclick = stop;
+    stopButton.onclick = gof.stop;
 
     var fasterButton = document.createElement('button');
     fasterButton.appendChild(document.createTextNode('Faster'));
@@ -79,8 +80,12 @@ function gofUI(elementId) {
     let stepContainer = document.createElement('div');
     let stepCount = document.createElement('span');
     stepCount.id = 'stepCount';
-    stepContainer.appendChild(document.createTextNode('Step '));
     stepContainer.appendChild(stepCount);
+    stepContainer.appendChild(document.createTextNode(' '));
+    let popCount = document.createElement('span');
+    popCount.id = 'populationCount';
+    stepContainer.appendChild(popCount);
+
     boardHeader.appendChild(stepContainer);
     let loopDisplay = document.createElement('div');
     loopDisplay.id = 'loopDisplay';
@@ -92,10 +97,6 @@ function gofUI(elementId) {
     var change = 25;
     if(faster) { gof.delay -= change; }
     else { gof.delay += change; }
-  }
-
-  let stop = () => {
-    gof.stop();
   }
 
   let doForEachStep = () => {
@@ -121,13 +122,20 @@ function gofUI(elementId) {
   }
 
   let updateHeader = () => {
-    document.getElementById('stepCount').innerHTML = gof.loopTracker.stepCount();
+    let setText = (elementId, text) => {
+      let elm = document.getElementById(elementId);
+      if(!!elm) {
+        elm.innerHTML = text;
+      }
+    }
+    setText('stepCount', 'Step: ' + gof.loopTracker.stepCount());
+    setText('populationCount', 'Population: ' + gof.populationCount());
     if(gof.loopTracker.foundLoop()) {
-      document.getElementById('loopDisplay').innerHTML = 'found loop of length ' + gof.loopTracker.loopLength();
+      setText('loopDisplay', 'found loop of length ' + gof.loopTracker.loopLength());
     }
   }
 
-  let cellId = (x, y) => { return "c."+x+"."+y; }
+  let cellId = (x, y) => "c."+x+"."+y;
 
   init(elementId);
 }
@@ -139,11 +147,11 @@ function loopTracker() {
   var currentBoardKey;
 
   function boardKey(board) {
-    return board.map((a) => { return a.join(''); }).join('');
+    return board.map((a) => a.join('')).join('');
   }
 
-  prog.stepCount = () => { return count; }
-  prog.foundLoop = () => { return count > 0 && !!seenMap[currentBoardKey]; }
+  prog.stepCount = () => count;
+  prog.foundLoop = () => count > 0 && !!seenMap[currentBoardKey];
   prog.didStep = (board) => {
     let key = boardKey(board);
     if(!prog.foundLoop()) {
@@ -228,11 +236,16 @@ function gameOfLife() {
     }
   }
 
+  gof.populationCount = () => {
+    let add = (a, b) => a + b;
+    return gofBoard.map((arr) => arr.reduce(add, 0)).reduce(add, 0);
+  }
+
   gof.setup = (size) => { initBoard(size); }
   gof.stop = () => { isStopped = true; }
   gof.start = () => { isStopped = false; run(); }
-  gof.getBoard = () => { return gofBoard; };
-  gof.isCellAlive = (x, y) => { return gofBoard[x][y] == 1; };
+  gof.getBoard = () => gofBoard;
+  gof.isCellAlive = (x, y) => gofBoard[x][y] == 1;
   gof.delay = 500;
 
   gof.setup(20);
