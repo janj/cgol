@@ -56,17 +56,29 @@ function gofUI(elementId) {
     boardFooter.className = 'btn-group';
     let buildButton = (text, fnct) => {
       var btn = document.createElement('button');
+      btn.id = text;
       btn.className = 'btn btn-default';
       btn.appendChild(document.createTextNode(text));
       btn.onclick = fnct;
       return btn;
     }
 
-    boardFooter.appendChild(buildButton('Start', gof.start));
-    boardFooter.appendChild(buildButton('Stop', gof.stop));
+    boardFooter.appendChild(buildButton('Start', () => { gof.start(); flipStartButton(); }));
+    boardFooter.appendChild(buildButton('Reset', () => { gof.resetBoard(); flipStartButton(); updateDisplay(); }));
     boardFooter.appendChild(buildButton('Faster', () => { speedUp(true) }));
     boardFooter.appendChild(buildButton('Slower', () => { speedUp(false) }));
     return boardFooter;
+  }
+
+  let flipStartButton = () => {
+    let btn = document.getElementById('Start');
+    if(gof.isStopped()) {
+      btn.innerHTML = 'Start';
+      btn.onclick = () => { gof.start(); flipStartButton(); };
+    } else {
+      btn.innerHTML = 'Stop';
+      btn.onclick = () => { gof.stop(); flipStartButton(); };
+    }
   }
 
   let boardHeaderElement = () => {
@@ -235,9 +247,19 @@ function gameOfLife() {
     return gofBoard.map((arr) => arr.reduce(add, 0)).reduce(add, 0);
   }
 
+  gof.resetBoard = () => {
+    isStopped = true;
+    for(var i=0; i<gofBoard.length; i++) {
+      for(var j=0; j<gofBoard[i].length; j++) {
+        gofBoard[i][j] = Math.round(Math.random());
+      }
+    }
+  }
+
   gof.setup = (width, height) => { initBoard(width, height); }
   gof.stop = () => { isStopped = true; }
   gof.start = () => { isStopped = false; run(); }
+  gof.isStopped = () => isStopped;
   gof.getBoard = () => gofBoard;
   gof.isCellAlive = (x, y) => gofBoard[x][y] == 1;
   gof.delay = 300;
