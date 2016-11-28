@@ -13,10 +13,11 @@ function gofUI(elementId) {
 
   let styleInit = () => {
     var style_rules = [];
-    style_rules.push('td { width: 10px; height: 10px; }')
+    style_rules.push('#gofBoard{ text-align:center; margin-top: 20px }');
+    style_rules.push('td { width: 5px; height: 5px; }');
     style_rules.push("td.off { background-color: grey; }");
     style_rules.push("td.on { background-color: magenta; }");
-    style_rules.push("table { border-collapse: collapse }");
+    style_rules.push("table { border-collapse:collapse; margin: 20px auto 20px auto; }");
     var style = document.createElement('style');
     style.type = "text/css";
     style.innerHTML = style_rules.join("\n");
@@ -52,26 +53,19 @@ function gofUI(elementId) {
 
   let boardFooterElement = () => {
     var boardFooter = document.createElement('div');
-    var startButton = document.createElement('button');
-    startButton.appendChild(document.createTextNode('Start'));
-    boardFooter.appendChild(startButton);
-    startButton.onclick = gof.start;
+    boardFooter.className = 'btn-group';
+    let buildButton = (text, fnct) => {
+      var btn = document.createElement('button');
+      btn.className = 'btn btn-default';
+      btn.appendChild(document.createTextNode(text));
+      btn.onclick = fnct;
+      return btn;
+    }
 
-    var stopButton = document.createElement('button');
-    stopButton.appendChild(document.createTextNode('Stop'));
-    boardFooter.appendChild(stopButton);
-    stopButton.onclick = gof.stop;
-
-    var fasterButton = document.createElement('button');
-    fasterButton.appendChild(document.createTextNode('Faster'));
-    boardFooter.appendChild(fasterButton);
-    fasterButton.onclick = () => { speedUp(true) };
-
-    var slowerButton = document.createElement('button');
-    slowerButton.appendChild(document.createTextNode('Slower'));
-    boardFooter.appendChild(slowerButton);
-    slowerButton.onclick = () => { speedUp(false) };
-
+    boardFooter.appendChild(buildButton('Start', gof.start));
+    boardFooter.appendChild(buildButton('Stop', gof.stop));
+    boardFooter.appendChild(buildButton('Faster', () => { speedUp(true) }));
+    boardFooter.appendChild(buildButton('Slower', () => { speedUp(false) }));
     return boardFooter;
   }
 
@@ -177,10 +171,10 @@ function gameOfLife() {
   var isStopped = false;
   let gofBoard = [];
 
-  function initBoard(size) {
-    for(var i=0; i<size; i++) {
+  function initBoard(width, height) {
+    for(var i=0; i<height; i++) {
       gofBoard[i] = [];
-      for(var j=0; j<size; j++) {
+      for(var j=0; j<width; j++) {
         gofBoard[i][j] = Math.round(Math.random());
       }
     }
@@ -241,14 +235,14 @@ function gameOfLife() {
     return gofBoard.map((arr) => arr.reduce(add, 0)).reduce(add, 0);
   }
 
-  gof.setup = (size) => { initBoard(size); }
+  gof.setup = (width, height) => { initBoard(width, height); }
   gof.stop = () => { isStopped = true; }
   gof.start = () => { isStopped = false; run(); }
   gof.getBoard = () => gofBoard;
   gof.isCellAlive = (x, y) => gofBoard[x][y] == 1;
-  gof.delay = 500;
+  gof.delay = 300;
 
-  gof.setup(20);
+  gof.setup(150, 75);
   return gof;
 }
 
