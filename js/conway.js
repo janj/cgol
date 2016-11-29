@@ -16,7 +16,8 @@ function gofUI(elementId) {
     style_rules.push('#gofBoard{ text-align:center; margin-top: 20px }');
     style_rules.push('td { width: 5px; height: 5px; }');
     style_rules.push("td.off { background-color: grey; }");
-    style_rules.push("td.on { background-color: magenta; }");
+    style_rules.push("td.on1 { background-color: magenta; }");
+    style_rules.push("td.on0 { background-color: blue; }");
     style_rules.push("table { border-collapse:collapse; margin: 20px auto 20px auto; }");
     var style = document.createElement('style');
     style.type = "text/css";
@@ -25,9 +26,9 @@ function gofUI(elementId) {
   }
 
   let buildDisplay = (elementId) => {
-    var boardNode = document.getElementById(elementId);
+    let boardNode = document.getElementById(elementId);
     boardNode.innerHTML = "";
-    var container = document.createElement('div');
+    let container = document.createElement('div');
     container.appendChild(boardHeaderElement());
     container.appendChild(boardTableElement());
     container.appendChild(boardFooterElement());
@@ -35,15 +36,22 @@ function gofUI(elementId) {
     updateHeader();
   }
 
+  let cellClass = (gof, x, y) => {
+    var isAlive = gof.isCellAlive(x, y);
+    let inhabitant = gof.inhabitantAt(x, y);
+    return isAlive ? 'on' + inhabitant.type : 'off';
+  }
+
   let boardTableElement = () => {
-    var boardTable = document.createElement('table');
+    let boardTable = document.createElement('table');
     for(var i=0; i<gof.getBoard().length; i++) {
       var rowNode = document.createElement('tr');
       for(var j=0; j<gof.getBoard()[i].length; j++) {
         var cell = document.createElement('td');
         cell.id = cellId(i, j);
         var isAlive = gof.isCellAlive(i, j);
-        cell.className = isAlive ? 'on' : 'off';
+        let inhabitant = gof.inhabitantAt(i, j);
+        cell.className = cellClass(gof, i, j);
         rowNode.appendChild(cell);
       }
       boardTable.appendChild(rowNode);
@@ -122,7 +130,7 @@ function gofUI(elementId) {
     for(var i=0; i<gof.getBoard().length; i++) {
       for(var j=0; j<gof.getBoard()[i].length; j++) {
         var element = document.getElementById(cellId(i, j));
-        element.className = gof.isCellAlive(i, j) ? 'on' : 'off';
+        element.className = cellClass(gof, i, j);
       }
     }
   }
@@ -210,25 +218,20 @@ function gameOfLife() {
     return !!board[x][y];
   }
 
-  function willBeAlive(board, x, y) {
-    var neighborCount = countNeighbors(board, x, y);
-    var stayinAlive = inhabited(board, x, y) && neighborCount == 2;
-    var isAlive = neighborCount == 3;
-    return stayinAlive || isAlive;
-  }
-
-  function countNeighbors(board, x, y) {
-    var neighborCount = 0;
+  function getNeighbors(board, x, y) {
+    let neighbors = [];
     for(i = x-1; i < x+2; i++) {
       for(j = y-1; j < y+2; j++) {
         if((i!=x || j!=y)) {
           var curX = i.mod(board.length);
-          var curY = j.mod(board[curX].length)
-          neighborCount += (inhabited(board, curX, curY) ? 1 : 0);
+          var curY = j.mod(board[curX].length);
+          if(inhabited(board, curX, curY)) {
+            neighbors.push(board[curX][curY]);
+          }
         }
       }
     }
-    return neighborCount;
+    return neighbors;
   }
 
   function sleep(ms) {
@@ -243,12 +246,35 @@ function gameOfLife() {
     sleep(gof.delay).then(() => { if(!isStopped) run(); });
   }
 
+  function inhabitantForStep(board, x, y) {
+    let neighbors = getNeighbors(board, x, y);
+    let neighborCount = neighbors.length;
+    var stayinAlive = inhabited(board, x, y) && neighborCount == 2;
+    var isAlive = neighborCount == 3;
+    if (inhabited(board, x, y)) {
+      if (neighborCount == 2 || neighborCount == 3) {
+        return board[x][y].clone();
+      }
+    }
+    else if(neighborCount == 3) {
+      let newInhabitant = inhabitant();
+      let firstTwoTypesEqual = neighbors[0].type == neighbors[1].type;
+      if(firstTwoTypesEqual) {
+        newInhabitant.type = neighbors[0].type;
+      } else {
+        newInhabitant.type = neighbors[2].type;
+      }
+      return newInhabitant;
+    }
+    return null;
+  }
+
   gof.step = () => {
     var nextBoard = [];
     for(var i=0; i<gofBoard.length; i++) {
       nextBoard[i] = [];
       for(var j=0; j<gofBoard[i].length; j++) {
-        nextBoard[i][j] = willBeAlive(gofBoard, i, j) ? inhabitant() : null;
+        nextBoard[i][j] = inhabitantForStep(gofBoard, i, j);
       }
     }
     gofBoard = nextBoard;
@@ -274,6 +300,7 @@ function gameOfLife() {
   gof.start = () => { isStopped = false; run(); }
   gof.isStopped = () => isStopped;
   gof.getBoard = () => gofBoard;
+  gof.inhabitantAt = (x, y) => gofBoard[x][y];
   gof.isCellAlive = (x, y) => inhabited(gofBoard, x, y);
   gof.delay = 300;
 
