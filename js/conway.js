@@ -106,7 +106,7 @@ function gofUI(elementId) {
   }
 
   let doForEachStep = () => {
-    gof.loopTracker.didStep(gof.getBoard());
+    gof.loopTracker.didStep(gof);
     updateDisplay(gof);
     if(gof.loopTracker.foundLoop()) {
       gof.stop();
@@ -146,20 +146,34 @@ function gofUI(elementId) {
   init(elementId);
 }
 
+function inhabitant() {
+  let service = {};
+  service.type = Math.round(Math.random());
+  service.clone = () => Object.assign({}, service);
+  return service;
+}
+
 function loopTracker() {
   let prog = {};
   let seenMap = {};
   var count = 0;
   var currentBoardKey;
 
-  function boardKey(board) {
-    return board.map((a) => a.join('')).join('');
+  function boardKey(gof) {
+    let board = gof.getBoard();
+    let boardKey = "";
+    for(var i=0; i<board.length; i++) {
+      for(var j=0; j<board[i].length; j++) {
+        boardKey += gof.isCellAlive(i, j) ? '1' : '0';
+      }
+    }
+    return boardKey;
   }
 
   prog.stepCount = () => count;
   prog.foundLoop = () => count > 0 && !!seenMap[currentBoardKey];
-  prog.didStep = (board) => {
-    let key = boardKey(board);
+  prog.didStep = (gof) => {
+    let key = boardKey(gof);
     if(!prog.foundLoop()) {
       if(!!currentBoardKey) {
         seenMap[currentBoardKey] = count;
@@ -187,14 +201,18 @@ function gameOfLife() {
     for(var i=0; i<height; i++) {
       gofBoard[i] = [];
       for(var j=0; j<width; j++) {
-        gofBoard[i][j] = Math.round(Math.random());
+        gofBoard[i][j] = Math.round(Math.random()) == 1 ? inhabitant() : null;
       }
     }
   }
 
+  function inhabited(board, x, y) {
+    return !!board[x][y];
+  }
+
   function willBeAlive(board, x, y) {
     var neighborCount = countNeighbors(board, x, y);
-    var stayinAlive = board[x][y] == 1 && neighborCount == 2;
+    var stayinAlive = inhabited(board, x, y) && neighborCount == 2;
     var isAlive = neighborCount == 3;
     return stayinAlive || isAlive;
   }
@@ -206,7 +224,7 @@ function gameOfLife() {
         if((i!=x || j!=y)) {
           var curX = i.mod(board.length);
           var curY = j.mod(board[curX].length)
-          neighborCount += board[curX][curY];
+          neighborCount += (inhabited(board, curX, curY) ? 1 : 0);
         }
       }
     }
@@ -217,41 +235,36 @@ function gameOfLife() {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  function cloneBoard(board) {
-    return JSON.parse(JSON.stringify(board));
-  }
-
   function run() {
     gof.step();
     if(gof.boardInteractor) {
       gof.boardInteractor(gof);
     }
-    sleep(gof.delay).then(() => {
-      if(!isStopped) {
-        run();
-      }
-    });
+    sleep(gof.delay).then(() => { if(!isStopped) run(); });
   }
 
   gof.step = () => {
-    var clone = cloneBoard(gofBoard);
+    var nextBoard = [];
     for(var i=0; i<gofBoard.length; i++) {
+      nextBoard[i] = [];
       for(var j=0; j<gofBoard[i].length; j++) {
-        gofBoard[i][j] = willBeAlive(clone, i, j) ? 1 : 0;
+        nextBoard[i][j] = willBeAlive(gofBoard, i, j) ? inhabitant() : null;
       }
     }
+    gofBoard = nextBoard;
   }
 
   gof.populationCount = () => {
     let add = (a, b) => a + b;
-    return gofBoard.map((arr) => arr.reduce(add, 0)).reduce(add, 0);
+    let convertRow = (cell) => !!cell ? 1 : 0;
+    return gofBoard.map((arr) => arr.map(convertRow).reduce(add, 0)).reduce(add, 0);
   }
 
   gof.resetBoard = () => {
     isStopped = true;
     for(var i=0; i<gofBoard.length; i++) {
       for(var j=0; j<gofBoard[i].length; j++) {
-        gofBoard[i][j] = Math.round(Math.random());
+        gofBoard[i][j] = Math.round(Math.random()) == 1 ? inhabitant() : null;
       }
     }
   }
@@ -261,7 +274,7 @@ function gameOfLife() {
   gof.start = () => { isStopped = false; run(); }
   gof.isStopped = () => isStopped;
   gof.getBoard = () => gofBoard;
-  gof.isCellAlive = (x, y) => gofBoard[x][y] == 1;
+  gof.isCellAlive = (x, y) => inhabited(gofBoard, x, y);
   gof.delay = 300;
 
   gof.setup(150, 75);
