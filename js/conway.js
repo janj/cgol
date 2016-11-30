@@ -72,10 +72,17 @@ function gofUI(elementId) {
     }
 
     boardFooter.appendChild(buildButton('Start', () => { gof.start(); flipStartButton(); }));
-    boardFooter.appendChild(buildButton('Reset', () => { gof.resetBoard(); flipStartButton(); updateDisplay(); }));
+    boardFooter.appendChild(buildButton('Reset', reset));
     boardFooter.appendChild(buildButton('Faster', () => { speedUp(true) }));
     boardFooter.appendChild(buildButton('Slower', () => { speedUp(false) }));
     return boardFooter;
+  }
+
+  let reset = () => {
+    gof.resetBoard();
+    gof.loopTracker = loopTracker();
+    flipStartButton();
+    updateDisplay();
   }
 
   let flipStartButton = () => {
@@ -302,7 +309,7 @@ function gameOfLife() {
   gof.getBoard = () => gofBoard;
   gof.inhabitantAt = (x, y) => gofBoard[x][y];
   gof.isCellAlive = (x, y) => inhabited(gofBoard, x, y);
-  gof.delay = 300;
+  gof.delay = 150;
 
   gof.setup(150, 75);
   return gof;
