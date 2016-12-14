@@ -1,5 +1,12 @@
 Number.prototype.mod = function(n) { return ((this % n)+n)%n; };
 
+let elementText = (elementId, text) => {
+  let boardCord = document.getElementById(elementId);
+  if(!!boardCord) {
+    boardCord.innerHTML = text;
+  }
+};
+
 function gofUI(elementId) {
   var gof = null;
 
@@ -32,6 +39,7 @@ function gofUI(elementId) {
     container.appendChild(boardHeaderElement());
     container.appendChild(boardTableElement());
     container.appendChild(boardFooterElement());
+    container.appendChild(patternElement());
     boardNode.appendChild(container);
     updateHeader();
   }
@@ -44,19 +52,30 @@ function gofUI(elementId) {
 
   let boardTableElement = () => {
     let boardTable = document.createElement('table');
+    boardTable.onmouseout = () => elementText('boardCordPreview', '');
     for(var i=0; i<gof.getBoard().length; i++) {
       var rowNode = document.createElement('tr');
       for(var j=0; j<gof.getBoard()[i].length; j++) {
         var cell = document.createElement('td');
         cell.id = cellId(i, j);
-        var isAlive = gof.isCellAlive(i, j);
-        let inhabitant = gof.inhabitantAt(i, j);
+        let x = j;
+        let y = i;
+        cell.onmouseover = () => elementText('boardCordPreview', x+', '+y);
+        cell.onclick = () => boardCellClicked(x, y);
         cell.className = cellClass(gof, i, j);
         rowNode.appendChild(cell);
       }
       boardTable.appendChild(rowNode);
     }
     return boardTable;
+  }
+
+  let boardCellClicked = (x, y) => {
+    elementText('boardCord', x + ', ' + y);
+    let printer = patternPrinter(gof);
+    printer.setOrigin(x, y);
+    printer.printPattern();
+    updateBoard();
   }
 
   let boardFooterElement = () => {
@@ -76,6 +95,17 @@ function gofUI(elementId) {
     boardFooter.appendChild(buildButton('Faster', () => { speedUp(true) }));
     boardFooter.appendChild(buildButton('Slower', () => { speedUp(false) }));
     return boardFooter;
+  }
+
+  let patternElement = () => {
+    var container = document.createElement('div');
+    var patternDivPrev = document.createElement('div');
+    patternDivPrev.id = 'boardCordPreview';
+    container.appendChild(patternDivPrev);
+    var patternDiv = document.createElement('div');
+    patternDiv.id = 'boardCord';
+    container.appendChild(patternDiv);
+    return container;
   }
 
   let reset = () => {
@@ -143,16 +173,10 @@ function gofUI(elementId) {
   }
 
   let updateHeader = () => {
-    let setText = (elementId, text) => {
-      let elm = document.getElementById(elementId);
-      if(!!elm) {
-        elm.innerHTML = text;
-      }
-    }
-    setText('stepCount', 'Step: ' + gof.loopTracker.stepCount());
-    setText('populationCount', 'Population: ' + gof.populationCount());
+    elementText('stepCount', 'Step: ' + gof.loopTracker.stepCount());
+    elementText('populationCount', 'Population: ' + gof.populationCount());
     if(gof.loopTracker.foundLoop()) {
-      setText('loopDisplay', 'found loop of length ' + gof.loopTracker.loopLength());
+      elementText('loopDisplay', 'found loop of length ' + gof.loopTracker.loopLength());
     }
   }
 
@@ -207,6 +231,37 @@ function loopTracker() {
   return prog;
 }
 
+function patternPrinter(gof) {
+  let gofBoard = gof;
+  let origin = {x: 0, y: 0};
+  let borderWidth = 2;
+
+  let printer = {};
+
+  printer.setOrigin = (x, y) => {
+    origin.x = x;
+    origin.y = y;
+  }
+
+  printer.printPattern = () => {
+    let pattern = GOF_PATTERNS.gosperGliderGun;
+    let extra = borderWidth * 2;
+    for(var x=0; x<pattern.width + extra; x++) {
+      for(var y=0; y<pattern.height + extra; y++) {
+        gofBoard.setCell(origin.y + y, origin.x + x, false);
+      }
+    }
+
+    for(var x=0; x<pattern.width; x++) {
+      for(var y=0; y<pattern.height; y++) {
+        let point = x + y * pattern.width;
+        gofBoard.setCell(origin.y + y + borderWidth, origin.x + x + borderWidth, pattern.points[point] == 1);
+      }
+    }
+  }
+  return printer;
+}
+
 function gameOfLife() {
   let gof = {};
   var isStopped = false;
@@ -216,7 +271,7 @@ function gameOfLife() {
     for(var i=0; i<height; i++) {
       gofBoard[i] = [];
       for(var j=0; j<width; j++) {
-        gofBoard[i][j] = Math.round(Math.random()) == 1 ? inhabitant() : null;
+        gofBoard[i][j] = false;
       }
     }
   }
@@ -297,7 +352,7 @@ function gameOfLife() {
     isStopped = true;
     for(var i=0; i<gofBoard.length; i++) {
       for(var j=0; j<gofBoard[i].length; j++) {
-        gofBoard[i][j] = Math.round(Math.random()) == 1 ? inhabitant() : null;
+        gof.setCell(i, j, Math.random() > .8);
       }
     }
   }
@@ -309,9 +364,33 @@ function gameOfLife() {
   gof.getBoard = () => gofBoard;
   gof.inhabitantAt = (x, y) => gofBoard[x][y];
   gof.isCellAlive = (x, y) => inhabited(gofBoard, x, y);
+  gof.setCell = (x, y, alive) => gofBoard[x][y] = alive ? inhabitant() : null;
   gof.delay = 150;
 
   gof.setup(150, 75);
   return gof;
 }
+
+
+let GOF_PATTERNS = {
+  glider: {
+    height: 3,
+    width: 3,
+    points: [0, 1, 0, 0, 0, 1, 1, 1, 1]
+  },
+  gosperGliderGun: {
+    width: 36,
+    height: 9,
+    points: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,
+             0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,
+             0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,
+             0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,
+             1,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+             1,1,0,0,0,0,0,0,0,0,1,0,0,0,1,0,1,1,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,
+             0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,
+             0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+             0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+             ]
+  }
+};
 
