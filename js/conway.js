@@ -92,8 +92,9 @@ function gofUI(elementId) {
 
     boardFooter.appendChild(buildButton('Start', () => { gof.start(); flipStartButton(); }));
     boardFooter.appendChild(buildButton('Reset', reset));
-    boardFooter.appendChild(buildButton('Faster', () => { speedUp(true) }));
-    boardFooter.appendChild(buildButton('Slower', () => { speedUp(false) }));
+    boardFooter.appendChild(buildButton('Clear', () => { gof.clearBoard(); updateDisplay(); }));
+    boardFooter.appendChild(buildButton('Faster', () => { speedUp(true); }));
+    boardFooter.appendChild(buildButton('Slower', () => { speedUp(false); }));
     return boardFooter;
   }
 
@@ -164,12 +165,10 @@ function gofUI(elementId) {
   }
 
   let updateBoard = () => {
-    for(var i=0; i<gof.getBoard().length; i++) {
-      for(var j=0; j<gof.getBoard()[i].length; j++) {
-        var element = document.getElementById(cellId(i, j));
-        element.className = cellClass(gof, i, j);
-      }
-    }
+    gof.forTheseCells(0, gof.getBoard().length, 0, gof.getBoard()[0].length, (x, y) => {
+      var element = document.getElementById(cellId(x, y));
+      element.className = cellClass(gof, x, y);
+    });
   }
 
   let updateHeader = () => {
@@ -201,11 +200,7 @@ function loopTracker() {
   function boardKey(gof) {
     let board = gof.getBoard();
     let boardKey = "";
-    for(var i=0; i<board.length; i++) {
-      for(var j=0; j<board[i].length; j++) {
-        boardKey += gof.isCellAlive(i, j) ? '1' : '0';
-      }
-    }
+    gof.forTheseCells(0, board.length, 0, board[0].length, (x, y) => boardKey += gof.isCellAlive(x, y) ? '1' : '0');
     return boardKey;
   }
 
@@ -246,18 +241,10 @@ function patternPrinter(gof) {
   printer.printPattern = () => {
     let pattern = GOF_PATTERNS.gosperGliderGun;
     let extra = borderWidth * 2;
-    for(var x=0; x<pattern.width + extra; x++) {
-      for(var y=0; y<pattern.height + extra; y++) {
-        gofBoard.setCell(origin.y + y, origin.x + x, false);
-      }
-    }
-
-    for(var x=0; x<pattern.width; x++) {
-      for(var y=0; y<pattern.height; y++) {
-        let point = x + y * pattern.width;
-        gofBoard.setCell(origin.y + y + borderWidth, origin.x + x + borderWidth, pattern.points[point] == 1);
-      }
-    }
+    gof.forTheseCells(origin.x, pattern.width, origin.y, pattern.height, (x, y) => {
+      let point = x - origin.x + (y - origin.y) * pattern.width;
+      gofBoard.setCell(y, x, pattern.points[point] == 1);
+    })
   }
   return printer;
 }
@@ -268,12 +255,8 @@ function gameOfLife() {
   let gofBoard = [];
 
   function initBoard(width, height) {
-    for(var i=0; i<height; i++) {
-      gofBoard[i] = [];
-      for(var j=0; j<width; j++) {
-        gofBoard[i][j] = false;
-      }
-    }
+    forTheseCells(0, height, 0, 1, (x, y) => gofBoard[x] = []);
+    forTheseCells(0, height, 0, width, (x, y) => gofBoard[x][y] = false);
   }
 
   function inhabited(board, x, y) {
@@ -282,17 +265,16 @@ function gameOfLife() {
 
   function getNeighbors(board, x, y) {
     let neighbors = [];
-    for(i = x-1; i < x+2; i++) {
-      for(j = y-1; j < y+2; j++) {
-        if((i!=x || j!=y)) {
-          var curX = i.mod(board.length);
-          var curY = j.mod(board[curX].length);
-          if(inhabited(board, curX, curY)) {
-            neighbors.push(board[curX][curY]);
-          }
+    let pushNeighbor = (i, j) => {
+      if((i!=x || j!=y)) {
+        var curX = i.mod(board.length);
+        var curY = j.mod(board[curX].length);
+        if(inhabited(board, curX, curY)) {
+          neighbors.push(board[curX][curY]);
         }
       }
     }
+    forTheseCells(x-1, 3, y-1, 3, pushNeighbor);
     return neighbors;
   }
 
@@ -332,13 +314,10 @@ function gameOfLife() {
   }
 
   gof.step = () => {
-    var nextBoard = [];
-    for(var i=0; i<gofBoard.length; i++) {
-      nextBoard[i] = [];
-      for(var j=0; j<gofBoard[i].length; j++) {
-        nextBoard[i][j] = inhabitantForStep(gofBoard, i, j);
-      }
-    }
+    let nextBoard = [];
+    let setNext = (x, y) => nextBoard[x][y] = inhabitantForStep(gofBoard, x, y);
+    forTheseCells(0, gofBoard.length, 0, 1, (x, y) => nextBoard[x] = []);
+    forTheseCells(0, gofBoard.length, 0, gofBoard[0].length, setNext);
     gofBoard = nextBoard;
   }
 
@@ -348,13 +327,25 @@ function gameOfLife() {
     return gofBoard.map((arr) => arr.map(convertRow).reduce(add, 0)).reduce(add, 0);
   }
 
-  gof.resetBoard = () => {
-    isStopped = true;
-    for(var i=0; i<gofBoard.length; i++) {
-      for(var j=0; j<gofBoard[i].length; j++) {
-        gof.setCell(i, j, Math.random() > .8);
+  let forTheseCells = (x, dx, y, dy, cellFunc) => {
+    for(var i=y; i<y+dy; i++) {
+      for(var j=x; j<x+dx; j++) {
+        cellFunc(j, i);
       }
     }
+  }
+
+  let setEachCell = (cellFunc) => {
+    forTheseCells(0, gofBoard.length, 0, gofBoard[0].length, (x, y) => gof.setCell(x, y, cellFunc()));
+  }
+
+  gof.clearBoard = () => {
+    setEachCell(() => false);
+  }
+
+  gof.resetBoard = () => {
+    isStopped = true;
+    setEachCell(() => Math.random() > .8);
   }
 
   gof.setup = (width, height) => { initBoard(width, height); }
@@ -365,6 +356,7 @@ function gameOfLife() {
   gof.inhabitantAt = (x, y) => gofBoard[x][y];
   gof.isCellAlive = (x, y) => inhabited(gofBoard, x, y);
   gof.setCell = (x, y, alive) => gofBoard[x][y] = alive ? inhabitant() : null;
+  gof.forTheseCells = forTheseCells;
   gof.delay = 150;
 
   gof.setup(150, 75);
