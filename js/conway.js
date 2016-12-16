@@ -12,7 +12,7 @@ function gofUI(elementId) {
 
   let init = (elementId) => {
     gof = gameOfLife();
-    gof.loopTracker = loopTracker();
+    // gof.loopTracker = loopTracker();
     gof.boardInteractor = doForEachStep;
     styleInit();
     buildDisplay(elementId);
@@ -72,9 +72,11 @@ function gofUI(elementId) {
 
   let boardCellClicked = (x, y) => {
     elementText('boardCord', x + ', ' + y);
+    let patternSelect = document.getElementById('patternSelect');
+    let patternKey = patternSelect.options[patternSelect.selectedIndex].value
     let printer = patternPrinter(gof);
     printer.setOrigin(x, y);
-    printer.printPattern();
+    printer.printPattern(GOF_PATTERNS[patternKey]);
     updateBoard();
   }
 
@@ -106,12 +108,25 @@ function gofUI(elementId) {
     var patternDiv = document.createElement('div');
     patternDiv.id = 'boardCord';
     container.appendChild(patternDiv);
+
+    var patternSelect = document.createElement('select');
+    patternSelect.id = 'patternSelect';
+    for(var key in GOF_PATTERNS) {
+      var option = document.createElement('option');
+      option.text = GOF_PATTERNS[key].name;
+      option.value = key;
+      patternSelect.add(option);
+    }
+    container.appendChild(patternSelect);
+
     return container;
   }
 
   let reset = () => {
     gof.resetBoard();
-    gof.loopTracker = loopTracker();
+    if(!!gof.loopTracker) {
+      gof.loopTracker = loopTracker();
+    }
     flipStartButton();
     updateDisplay();
   }
@@ -152,11 +167,13 @@ function gofUI(elementId) {
   }
 
   let doForEachStep = () => {
-    gof.loopTracker.didStep(gof);
-    updateDisplay(gof);
-    if(gof.loopTracker.foundLoop()) {
-      gof.stop();
+    if(!!gof.loopTracker) {
+      gof.loopTracker.didStep(gof);
+      if(gof.loopTracker.foundLoop()) {
+        gof.stop();
+      }
     }
+    updateDisplay(gof);
   }
 
   let updateDisplay = () => {
@@ -172,10 +189,12 @@ function gofUI(elementId) {
   }
 
   let updateHeader = () => {
-    elementText('stepCount', 'Step: ' + gof.loopTracker.stepCount());
     elementText('populationCount', 'Population: ' + gof.populationCount());
-    if(gof.loopTracker.foundLoop()) {
-      elementText('loopDisplay', 'found loop of length ' + gof.loopTracker.loopLength());
+    if(!!gof.loopTracker) {
+      elementText('stepCount', 'Step: ' + gof.loopTracker.stepCount());
+      if(gof.loopTracker.foundLoop()) {
+        elementText('loopDisplay', 'found loop of length ' + gof.loopTracker.loopLength());
+      }
     }
   }
 
@@ -238,8 +257,7 @@ function patternPrinter(gof) {
     origin.y = y;
   }
 
-  printer.printPattern = () => {
-    let pattern = GOF_PATTERNS.gosperGliderGun;
+  printer.printPattern = (pattern) => {
     let extra = borderWidth * 2;
     gof.forTheseCells(origin.x, pattern.width, origin.y, pattern.height, (x, y) => {
       let point = x - origin.x + (y - origin.y) * pattern.width;
@@ -366,11 +384,13 @@ function gameOfLife() {
 
 let GOF_PATTERNS = {
   glider: {
+    name: 'Glider',
     height: 3,
     width: 3,
     points: [0, 1, 0, 0, 0, 1, 1, 1, 1]
   },
   gosperGliderGun: {
+    name: 'Gosper Glider Gun',
     width: 36,
     height: 9,
     points: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,
@@ -383,6 +403,48 @@ let GOF_PATTERNS = {
              0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
              0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
              ]
+  },
+  lwss: {
+    name: 'Light Weight Space Ship',
+    width: 5,
+    height: 4,
+    points: [0,1,0,0,1, 1,0,0,0,0, 1,0,0,0,1, 1,1,1,1,0]
+  },
+  diehard: {
+    name: 'Diehard',
+    width: 8,
+    height: 3,
+    points: [0,0,0,0,0,0,1,0, 1,1,0,0,0,0,0,0, 0,1,0,0,0,1,1,1]
+  },
+  rPentomino: {
+    name: 'r Pentomino',
+    width: 3,
+    height: 3,
+    points: [0,1,1, 1,1,0, 0,1,0]
+  },
+  acorn: {
+    name: 'Acorn',
+    width: 7,
+    height: 3,
+    points: [0,1,0,0,0,0,0, 0,0,0,1,0,0,0, 1,1,0,0,1,1,1,]
+  },
+  oneInfi: {
+    name: 'Infinite Pattern 1 Height',
+    width: 39,
+    height: 1,
+    points: [1,1,1,1,1,1,1,1,0,1,1,1,1,1,0,0,0,1,1,1,0,0,0,0,0,0,1,1,1,1,1,1,1,0,1,1,1,1,1]
+  },
+  blsw: {
+    name: 'Not Sure',
+    width: 8,
+    height: 6,
+    points: [0,0,0,0,0,0,1,0,
+             0,0,0,0,1,0,1,1,
+             0,0,0,0,1,0,1,0,
+             0,0,0,0,1,0,0,0,
+             0,0,1,0,0,0,0,0,
+             1,0,1,0,0,0,0,0,
+    ]
   }
 };
 
